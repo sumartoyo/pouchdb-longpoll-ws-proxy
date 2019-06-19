@@ -1,0 +1,15 @@
+{
+  "name": "pouchdb-longpoll-ws-proxy",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "sumartoyo",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.6.0",
+    "ws": "^7.0.1"
+  }
+}
