@@ -1,10 +1,10 @@
-export default function createFetchWs(urlWs) {
-  const debug = process.env.NODE_ENV === 'production' ? (
-    () => {}
-  ) : (
-    fn => console.log(...fn())
-  );
+const debug = process.env.NODE_ENV === 'production' ? (
+  () => {}
+) : (
+  fn => console.log(...fn())
+);
 
+export default function createFetchWs(urlWs) {
   return (url, options) => {
     const isLongPoll = url.indexOf('feed=longpoll') !== -1;
     if (!isLongPoll) {
@@ -17,6 +17,8 @@ export default function createFetchWs(urlWs) {
       headers[key] = value;
     }
     options.headers = headers;
+
+    const signal = options.signal;
     delete options.signal;
 
     let isWaitingResponse = false;
@@ -24,16 +26,22 @@ export default function createFetchWs(urlWs) {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(urlWs);
 
+      if (signal) {
+        signal.onabort = () => {
+          isWaitingResponse = false;
+          ws.close();
+        };
+      }
+
       ws.onerror = err => {
         debug(() => ['DEBUG ws.onerror', err]);
         reject(err);
       };
 
       ws.onclose = () => {
+        debug(() => ['DEBUG ws.onclose']);
         if (isWaitingResponse) {
           ws.onerror(new Error('connection died'));
-        } else {
-          debug(() => ['DEBUG ws.onclose']);
         }
       };
 
