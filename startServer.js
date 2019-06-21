@@ -5,7 +5,7 @@ function start(options) {
   const server = new WebSocket.Server(options);
 
   server.on('listening', () => {
-    console.log(`listening on ${options.port}`);
+    console.log(`listening on ${server.address().port}`);
   });
 
   server.on('error', error => {
