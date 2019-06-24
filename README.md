@@ -42,9 +42,10 @@ const httpsServer = https.createServer({
   cert: fs.readFileSync(process.env.PATH_CERT, { encoding: 'utf8' }),
 });
 
+httpsServer.listen(8080);
+
 const wsServer = startServer({
   host: '0.0.0.0',
-  port: 8080,
   server: httpsServer,
 });
 ```

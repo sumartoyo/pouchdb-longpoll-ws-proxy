@@ -102,7 +102,6 @@ function startServer(options) {
       closeServer();
       options.server.close();
     };
-    options.server.listen();
   }
 
   return server;
