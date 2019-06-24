@@ -21,8 +21,31 @@ Yes, you need to run a server. This is the proxy to provide the WebSocket interf
 ```js
 const startServer = require('pouchdb-longpoll-ws-proxy/startServer');
 
-startServer({
+const wsServer = startServer({
+  host: '0.0.0.0',
   port: 8080,
+});
+
+wsServer.on('listening', () => console.log('listening'));
+
+// wsServer.close();
+```
+
+You can also use HTTPS to run WSS.
+
+```js
+const https = require('https');
+const startServer = require('pouchdb-longpoll-ws-proxy/startServer');
+
+const httpsServer = https.createServer({
+  key: fs.readFileSync(process.env.PATH_KEY, { encoding: 'utf8' }),
+  cert: fs.readFileSync(process.env.PATH_CERT, { encoding: 'utf8' }),
+});
+
+const wsServer = startServer({
+  host: '0.0.0.0',
+  port: 8080,
+  server: httpsServer,
 });
 ```
 
