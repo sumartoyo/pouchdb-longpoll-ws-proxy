@@ -1,0 +1,3 @@
+- run CoucDB/PouchDB server, assumed in `http://localhost:5984`.
+- run server: `npm run server`
+- run client: `npm run client`, open in browser `http://localhost:1234`.

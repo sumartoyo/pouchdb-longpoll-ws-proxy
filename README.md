@@ -14,14 +14,16 @@ socket-pouch is also a whole new adapter while my helper is not an adapter. It's
 
 ## How to
 
+Example code is available in folder `example`.
+
 ### Server
 
 Yes, you need to run a server. This is the proxy to provide the WebSocket interface.
 
 ```js
-const startServer = require('pouchdb-longpoll-ws-proxy/startServer');
+const createServer = require('pouchdb-longpoll-ws-proxy/createServer');
 
-const wsServer = startServer({
+const wsServer = createServer({
   host: '0.0.0.0',
   port: 8080,
 });
@@ -35,7 +37,7 @@ You can also use HTTPS to run WSS.
 
 ```js
 const https = require('https');
-const startServer = require('pouchdb-longpoll-ws-proxy/startServer');
+const createServer = require('pouchdb-longpoll-ws-proxy/createServer');
 
 const httpsServer = https.createServer({
   key: fs.readFileSync(process.env.PATH_KEY, { encoding: 'utf8' }),
@@ -44,7 +46,7 @@ const httpsServer = https.createServer({
 
 httpsServer.listen(8080);
 
-const wsServer = startServer({
+const wsServer = createServer({
   host: '0.0.0.0',
   server: httpsServer,
 });
@@ -73,14 +75,10 @@ replicator.on('change', onChange);
 
 ## API
 
-### startServer
+### `createServer(options)`
 
-`startServer(options)`
+Create a new server instance. Read [this](https://github.com/elpheria/rpc-websockets/blob/HEAD/API.md#new-websocketserveroptions---server) and [this](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback). Returns server object.
 
-Create a new server instance. Read [this](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback).
-
-### createFetchWs
-
-`createFetchWs(urlWs)`
+### `createFetchWs(urlWs)`
 
 Create a fetcher to be used by PouchDB. `urlWs` is the URL to the server.

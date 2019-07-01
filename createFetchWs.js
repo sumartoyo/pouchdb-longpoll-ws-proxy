@@ -1,19 +1,19 @@
-const debug = process.env.NODE_ENV === 'production' ? (
-  () => {}
-) : (
-  fn => console.log(...fn())
-);
+import { Client } from 'rpc-websockets';
+const WebSocket = window.WebSocket;
 
-export default function createFetchWs(urlWs) {
+export default function createFetchWs(param) {
+  let fetchWs = param instanceof RpcWs ? param : new RpcWs(param);
+
   return (url, options) => {
     const isLongPoll = url.indexOf('feed=longpoll') !== -1;
     if (!isLongPoll) {
       return fetch(url, options);
     }
 
-    options = {...options};
+    options = Object.assign({}, options);
+
     const headers = {};
-    for (let [key, value] of options.headers.entries()) {
+    for (let [ key, value ] of options.headers.entries()) {
       headers[key] = value;
     }
     options.headers = headers;
@@ -21,51 +21,97 @@ export default function createFetchWs(urlWs) {
     const signal = options.signal;
     delete options.signal;
 
-    let isWaitingResponse = false;
-
-    return new Promise((resolve, reject) => {
-      const ws = new WebSocket(urlWs);
-
-      if (signal) {
-        signal.onabort = () => {
-          isWaitingResponse = false;
-          ws.close();
-        };
-      }
-
-      ws.onerror = err => {
-        debug(() => ['DEBUG ws.onerror', err]);
+    return new Promise(async (resolve, reject) => {
+      signal.onabort = () => {
+        const err = new Error('AbortError');
+        err.name = err.message;
         reject(err);
       };
 
-      ws.onclose = () => {
-        debug(() => ['DEBUG ws.onclose']);
-        if (isWaitingResponse) {
-          ws.onerror(new Error('connection died'));
-        }
-      };
-
-      ws.onopen = () => {
-        debug(() => ['DEBUG ws.onopen']);
-        ws.send(JSON.stringify({url, options}));
-        isWaitingResponse = true;
-      };
-
-      ws.onmessage = event => {
-        isWaitingResponse = false;
-        const data = JSON.parse(event.data);
-        if (data.error) {
-          ws.onerror(new Error(data.error));
-        } else if (data.response) {
-          const json = data.response.json;
-          data.response.json = () => json;
-          debug(() => ['DEBUG ws.data.response', data.response]);
-          resolve(data.response);
-        } else {
-          ws.onerror(new Error('unknown response'));
-          debug(() => ['DEBUG ws.data.response', event]);
-        }
-      };
+      try {
+        const result = await fetchWs.call('pouchdb.longpoll', [ url, options ]);
+        const json = result.json;
+        result.json = () => json;
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
     });
   };
+}
+
+export class RpcWs {
+  constructor(urlWs) {
+    this.urlWs = urlWs;
+    this.status = WebSocket.CLOSED;
+    this.queue = new Set([]);
+  }
+
+  call(...args) {
+    return new Promise((resolve, reject) => {
+      this.queue.add({ args, resolve, reject });
+      if (this.status === WebSocket.CLOSED) {
+        this.connect();
+      } else if (this.status === WebSocket.CONNECTING) {
+        // do nothing
+      } else if (this.status === WebSocket.OPEN) {
+        this.runQueue();
+      }
+    });
+  }
+
+  connect() {
+    this.status = WebSocket.CONNECTING;
+    this.client = new Client(this.urlWs, {
+      reconnect: false,
+    });
+    this.client.on('open', () => this.onOpen());
+    this.client.on('close', () => this.onClose());
+    this.client.on('error', (err) => this.onError(err));
+  }
+
+  onOpen() {
+    this.status = WebSocket.OPEN;
+    this.runQueue();
+  }
+
+  onClose() {
+    this.status = WebSocket.CLOSED;
+    this.onError(new Error('connection died'));
+  }
+
+  onError(err) {
+    if (err.target && 'readyState' in err.target) {
+      this.status = err.target.readyState;
+    }
+    while (this.queue.size > 0) {
+      let request;
+      for (request of this.queue) {
+        request.reject(err);
+        break;
+      }
+      this.queue.delete(request);
+    }
+  }
+
+  runQueue() {
+    for (let request of this.queue) {
+      this.runRequest(request);
+    }
+  }
+
+  async runRequest(request) {
+    const { args, resolve, reject } = request;
+    try {
+      if (!request.isRunning) {
+        request.isRunning = true;
+        const result = await this.client.call(...args);
+        this.queue.delete(request);
+        resolve(result);
+      }
+    } catch (err) {
+      this.queue.delete(request);
+      reject(err);
+    }
+  }
 }

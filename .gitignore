@@ -87,4 +87,7 @@ typings/
 # DynamoDB Local files
 .dynamodb/
 
+*.bak
+dist
+
 package-lock.json
